@@ -2,19 +2,31 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { io, Socket } from 'socket.io-client';
 import { SenetState, StickThrow } from '../utils/types';
-
-const BACKEND_URL = 'http://localhost:3000';
 const CLIENT_SESSION_LS_KEY = 'senet:clientSessionId';
+
+function resolveBackendUrl(): string {
+  const protocol = window.location.protocol;
+  const hostname = window.location.hostname || 'localhost';
+  return `${protocol}//${hostname}:3000`;
+}
+
+function generateSessionId(): string {
+  const g = globalThis as unknown as { crypto?: { randomUUID?: () => string } };
+  if (g.crypto && typeof g.crypto.randomUUID === 'function') {
+    return g.crypto.randomUUID();
+  }
+  return `sid_${Date.now()}_${Math.random().toString(36).slice(2, 12)}`;
+}
 
 function getClientSessionId(): string {
   try {
     const existing = localStorage.getItem(CLIENT_SESSION_LS_KEY);
     if (existing && existing.trim()) return existing;
-    const created = crypto.randomUUID();
+    const created = generateSessionId();
     localStorage.setItem(CLIENT_SESSION_LS_KEY, created);
     return created;
   } catch {
-    return crypto.randomUUID();
+    return generateSessionId();
   }
 }
 
@@ -25,7 +37,7 @@ export class SenetSocketService {
   private readonly connectTimeoutMs = 5000;
 
   constructor() {
-    this.socket = io(`${BACKEND_URL}/game`, {
+    this.socket = io(`${resolveBackendUrl()}/game`, {
       transports: ['websocket'],
       auth: {
         clientSessionId: getClientSessionId(),
