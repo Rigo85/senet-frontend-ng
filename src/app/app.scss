@@ -1,0 +1,150 @@
+:host {
+  display: block;
+  min-height: 100vh;
+  background: #f8f7f3;
+  color: #1f2937;
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+}
+
+.layout {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+button,
+select {
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.status {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.board {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(42px, 1fr));
+  gap: 6px;
+}
+
+.cell {
+  min-height: 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.cell .pos {
+  font-size: 11px;
+  color: #6b7280;
+  position: absolute;
+  left: 6px;
+  top: 4px;
+}
+
+.cell .token {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.piece-human {
+  background: #fee2e2;
+  border-color: #ef4444;
+  color: #b91c1c;
+}
+
+.piece-bot {
+  background: #dbeafe;
+  border-color: #3b82f6;
+  color: #1d4ed8;
+}
+
+.clickable {
+  box-shadow: 0 0 0 3px #f59e0b inset;
+}
+
+.feed {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 10px;
+}
+
+.turn-card {
+  border-bottom: 1px dashed #e5e7eb;
+  padding: 8px 0;
+}
+
+.turn-title {
+  font-weight: 700;
+}
+
+.turn-line {
+  padding-left: 12px;
+}
+
+.turn-repeat {
+  padding-left: 12px;
+  color: #92400e;
+  font-size: 13px;
+}
+
+.turn-note {
+  font-size: 14px;
+  padding: 6px 0;
+  border-bottom: 1px dashed #e5e7eb;
+  color: #4b5563;
+}
+
+.message {
+  padding: 8px;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+}
+
+.notes {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #374151;
+}
+
+@media (max-width: 720px) {
+  .toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .actions {
+    flex-wrap: wrap;
+  }
+
+  .row {
+    grid-template-columns: repeat(5, minmax(48px, 1fr));
+  }
+}
