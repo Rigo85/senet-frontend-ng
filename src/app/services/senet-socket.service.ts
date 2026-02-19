@@ -7,7 +7,7 @@ const CLIENT_SESSION_LS_KEY = 'senet:clientSessionId';
 function resolveBackendUrl(): string {
   const protocol = window.location.protocol;
   const hostname = window.location.hostname || 'localhost';
-  return `${protocol}//${hostname}:3000`;
+  return `${protocol}//${hostname}:3008`;
 }
 
 function generateSessionId(): string {

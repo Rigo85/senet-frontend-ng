@@ -8,7 +8,7 @@ const LS_KEY = 'senet:gameId';
 function resolveBackendUrl(): string {
   const protocol = window.location.protocol;
   const hostname = window.location.hostname || 'localhost';
-  return `${protocol}//${hostname}:3000`;
+  return `${protocol}//${hostname}:3008`;
 }
 
 type TurnLogEntry = {
