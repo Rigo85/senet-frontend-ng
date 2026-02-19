@@ -1,0 +1,16 @@
+<svg width="96" height="96" viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Anubis">
+  <defs>
+    <linearGradient id="anubisGold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f4d27a"/>
+      <stop offset="100%" stop-color="#c08a2a"/>
+    </linearGradient>
+  </defs>
+  <circle cx="48" cy="48" r="44" fill="#2a1b10"/>
+  <circle cx="48" cy="48" r="40" fill="#1b1512" stroke="url(#anubisGold)" stroke-width="2"/>
+  <path d="M36 18L45 30L36 38L31 26Z" fill="#111"/>
+  <path d="M61 16L64 34L55 31L52 20Z" fill="#0f0f0f"/>
+  <path d="M24 56C28 40 41 32 56 34C67 36 72 44 72 50C72 58 66 64 58 66L54 72H39L35 65C30 64 25 61 24 56Z" fill="#111"/>
+  <path d="M41 51L66 51L71 47L75 51L70 56L41 56Z" fill="#181818"/>
+  <circle cx="61" cy="46" r="2.5" fill="url(#anubisGold)"/>
+  <path d="M39 71H56" stroke="url(#anubisGold)" stroke-width="2.5" stroke-linecap="round"/>
+</svg>

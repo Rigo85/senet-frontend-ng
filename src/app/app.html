@@ -1,23 +1,20 @@
 <main class="layout">
   <header class="toolbar">
     <h1>Senet</h1>
-    <div class="actions">
-      <button (click)="onNewGame()" [disabled]="loading()">Nueva partida</button>
-      <label>
-        Dificultad bot
-        <select [value]="selectedDifficulty()" (change)="onDifficultyChange(($any($event.target)).value)">
-          <option [value]="2">2</option>
-          <option [value]="4">4</option>
-          <option [value]="6">6</option>
-        </select>
-      </label>
-      <button
-        (click)="onThrow()"
-        [disabled]="loading() || !state() || state()!.phase !== 'WAIT_THROW' || state()!.turn !== 'HUMAN'"
-      >
-        Lanzar tablillas
-      </button>
-    </div>
+    <details class="menu">
+      <summary>Menu</summary>
+      <div class="menu-content">
+        <button (click)="onNewGame()" [disabled]="loading()">Nueva partida</button>
+        <label>
+          Dificultad bot
+          <select [value]="selectedDifficulty()" (change)="onDifficultyChange(($any($event.target)).value)">
+            <option [value]="2">2</option>
+            <option [value]="4">4</option>
+            <option [value]="6">6</option>
+          </select>
+        </label>
+      </div>
+    </details>
   </header>
 
   @if (message()) {
@@ -25,29 +22,40 @@
   }
 
   @if (state(); as st) {
-    <section class="status">
-      <p><strong>ID:</strong> {{ st.id }}</p>
-      <p><strong>Turno:</strong> {{ st.turn === 'HUMAN' ? 'Humano' : 'Bot' }}</p>
-      <p><strong>Fase:</strong> {{ st.phase }}</p>
-      <p><strong>Ultima tirada:</strong> {{ st.pendingThrow?.value ?? '-' }}</p>
-      <p><strong>Fuera (Humano/Bot):</strong> {{ st.exitedHuman }} / {{ st.exitedBot }}</p>
-    </section>
-
-    <section class="board">
-      @for (row of boardRows; track $index) {
-        <div class="row">
-          @for (pos of row; track pos) {
-            <button
-              class="{{ pieceClass(pos) }} {{ isClickable(pos) ? 'clickable' : '' }}"
-              (click)="onCellClick(pos)"
-              [disabled]="loading()"
-            >
-              <span class="pos">{{ pos }}</span>
-              <span class="token">{{ pieceLabel(pos) }}</span>
-            </button>
+    <section class="board-scroll">
+      <div class="board-wrap">
+        <div class="board">
+          @for (row of boardRows; track $index) {
+            <div class="row">
+              @for (pos of row; track pos) {
+                <button
+                  class="{{ pieceClass(pos) }} {{ isClickable(pos) ? 'clickable' : '' }}"
+                  [class.special-cell]="pos === 15 || pos === 26 || pos === 27 || pos === 28 || pos === 29 || pos === 30"
+                  (click)="onCellClick(pos)"
+                  [disabled]="loading()"
+                >
+                  @if (specialCellImage(pos); as imagePath) {
+                    <img class="cell-art" [class.cell-art-trim]="pos === 29 || pos === 30" [src]="imagePath" alt="" />
+                  }
+                  <span class="track {{ pathTrackClass(pos) }}"></span>
+                  <span class="pos">{{ pos }}</span>
+                  @if (pieceIcon(pos); as tokenIcon) {
+                    <span class="token">
+                      <img class="token-icon" [src]="tokenIcon" [alt]="pieceLabel(pos)" />
+                    </span>
+                  }
+                </button>
+              }
+            </div>
           }
         </div>
-      }
+        @if (showThrowOverlay()) {
+          <button class="throw-overlay-btn" (click)="onThrow()" aria-label="Lanzar tablillas">
+            <img src="/images/tablillas.png" alt="" />
+            <span class="throw-label">Lanzar tablillas</span>
+          </button>
+        }
+      </div>
     </section>
 
     <section class="feed">
@@ -80,6 +88,13 @@
         Repetición de turno: se repite solo cuando la tirada da valor <strong>1</strong>, <strong>3</strong> o
         <strong>6</strong>.
       </p>
+    </section>
+
+    <section class="help">
+      <h2>Ayuda</h2>
+      <p><a href="https://es.wikipedia.org/wiki/Senet" target="_blank" rel="noopener">Reglas base de Senet</a></p>
+      <p><a href="https://es.wikipedia.org/wiki/%C3%81rbol_Expectiminimax" target="_blank" rel="noopener">Expectiminimax (bot)</a></p>
+      <p><a href="https://www.britannica.com/topic/Senet-board-game" target="_blank" rel="noopener">Contexto historico</a></p>
     </section>
   }
 </main>

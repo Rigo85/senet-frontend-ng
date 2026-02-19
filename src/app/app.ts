@@ -41,15 +41,27 @@ export class App {
   selectedDifficulty = signal<2 | 4 | 6>(4);
 
   boardRows = [
-    [1,2,3,4,5,6,7,8,9,10],
-    [20,19,18,17,16,15,14,13,12,11],
-    [21,22,23,24,25,26,27,28,29,30]
+    [1, 20, 21],
+    [2, 19, 22],
+    [3, 18, 23],
+    [4, 17, 24],
+    [5, 16, 25],
+    [6, 15, 26],
+    [7, 14, 27],
+    [8, 13, 28],
+    [9, 12, 29],
+    [10, 11, 30]
   ];
 
   legalFromPositions = computed(() => {
     const st = this.state();
     if (!st || st.turn !== 'HUMAN' || st.phase !== 'WAIT_MOVE') return new Set<number>();
     return new Set<number>(st.legalMoves.map((m) => m.from));
+  });
+
+  showThrowOverlay = computed(() => {
+    const st = this.state();
+    return !!st && !this.loading() && st.phase === 'WAIT_THROW' && st.turn === 'HUMAN';
   });
 
   constructor(private ws: SenetSocketService, private destroyRef: DestroyRef) {
@@ -159,13 +171,41 @@ export class App {
   pieceLabel(position: number): string {
     const st = this.state();
     if (!st) return '';
-    if (st.humanPieces.includes(position)) return 'H';
-    if (st.botPieces.includes(position)) return 'B';
+    if (st.humanPieces.includes(position)) return 'Ra';
+    if (st.botPieces.includes(position)) return 'Apophis';
     return '';
+  }
+
+  pieceIcon(position: number): string | null {
+    const st = this.state();
+    if (!st) return null;
+    if (st.humanPieces.includes(position)) return '/images/ra.png';
+    if (st.botPieces.includes(position)) return '/images/apophis.png';
+    return null;
   }
 
   isClickable(position: number): boolean {
     return this.legalFromPositions().has(position);
+  }
+
+  pathTrackClass(position: number): string {
+    if (position === 1) return 't-v-down';
+    if (position >= 2 && position <= 9) return 't-v-full';
+    if (position === 10) return 't-v-up t-h-right';
+    if (position === 11) return 't-v-up t-h-left';
+    if (position >= 12 && position <= 19) return 't-v-full';
+    if (position === 20) return 't-v-down t-h-right';
+    if (position === 21) return 't-v-down t-h-left';
+    if (position >= 22 && position <= 29) return 't-v-full';
+    if (position === 30) return 't-v-up';
+    return '';
+  }
+
+  specialCellImage(position: number): string | null {
+    if (position === 15 || (position >= 26 && position <= 30)) {
+      return `/images/casilla-${position}.png`;
+    }
+    return null;
   }
 
   sideLabel(side: 'HUMAN' | 'BOT'): string {
