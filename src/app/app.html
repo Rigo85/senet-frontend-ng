@@ -1,20 +1,28 @@
 <main class="layout">
   <header class="toolbar">
-    <h1>Senet</h1>
-    <details class="menu">
-      <summary>Menu</summary>
-      <div class="menu-content">
-        <button (click)="onNewGame()" [disabled]="loading()">Nueva partida</button>
-        <label>
-          Dificultad bot
-          <select [value]="selectedDifficulty()" (change)="onDifficultyChange(($any($event.target)).value)">
-            <option [value]="2">2</option>
-            <option [value]="4">4</option>
-            <option [value]="6">6</option>
-          </select>
-        </label>
-      </div>
-    </details>
+    <h1 class="brand-mark">
+      <span>SENET - </span>
+      <img src="/images/senet-hieroglyphs.svg" alt="jeroglíficos" />
+    </h1>
+    <div class="menu">
+      <button class="menu-trigger" type="button" (click)="toggleMenu()" [attr.aria-expanded]="menuOpen()">
+        Menú
+      </button>
+      @if (menuOpen()) {
+        <button class="menu-backdrop" type="button" aria-label="Cerrar menú" (click)="closeMenu()"></button>
+        <div class="menu-content">
+          <button (click)="onNewGame()" [disabled]="loading()">Nueva partida</button>
+          <label>
+            Dificultad bot
+            <select [value]="selectedDifficulty()" (change)="onDifficultyChange(($any($event.target)).value)">
+              <option [value]="2">2</option>
+              <option [value]="4">4</option>
+              <option [value]="6">6</option>
+            </select>
+          </label>
+        </div>
+      }
+    </div>
   </header>
 
   @if (message()) {
@@ -31,6 +39,7 @@
                 <button
                   class="{{ pieceClass(pos) }} {{ isClickable(pos) ? 'clickable' : '' }}"
                   [class.special-cell]="pos === 15 || pos === 26 || pos === 27 || pos === 28 || pos === 29 || pos === 30"
+                  [attr.data-pos]="pos"
                   (click)="onCellClick(pos)"
                   [disabled]="loading()"
                 >
@@ -55,29 +64,49 @@
             <span class="throw-label">Lanzar tablillas</span>
           </button>
         }
+        @if (throwFx(); as fx) {
+          <div class="throw-fx" [class.bot]="fx.side === 'BOT'">
+            <div class="throw-fx-sticks">
+              @for (stick of fx.sticks; track $index) {
+                <span class="fx-stick" [class.white]="stick === 1"></span>
+              }
+            </div>
+            <div class="throw-fx-value">Tirada: {{ fx.value }}</div>
+          </div>
+        }
+        @if (moveFx(); as mfx) {
+          <div class="move-fx-token" [class.bot]="mfx.side === 'BOT'" [style.left.px]="mfx.left" [style.top.px]="mfx.top" [style.opacity]="mfx.opacity">
+            <img [src]="mfx.icon" [alt]="mfx.label" />
+          </div>
+        }
+        @if (captureFx(); as cfx) {
+          <div class="capture-fx" [style.left.px]="cfx.left" [style.top.px]="cfx.top"></div>
+        }
       </div>
     </section>
 
     <section class="feed">
       <h2>Registro de jugadas</h2>
-      @if (turnLog().length === 0) {
-        <p>Sin jugadas aun.</p>
-      } @else {
-        @for (item of turnLog(); track item.id; let i = $index) {
-          @if (item.kind === 'turn') {
-            <div class="turn-card">
-              <div class="turn-title">{{ logIndex(i) }}. {{ sideLabel(item.side) }}:</div>
-              <div class="turn-line">tablillas: {{ sticksLabel(item.sticks) }} {{ item.roll }}</div>
-              <div class="turn-line">movimiento: {{ item.movement ?? 'sin movimiento' }}</div>
-              @if (item.repeatNote) {
-                <div class="turn-repeat">{{ item.repeatNote }}</div>
-              }
-            </div>
-          } @else {
-            <div class="turn-note">Nota: {{ item.message }}</div>
+      <div class="feed-list" #turnLogList>
+        @if (turnLog().length === 0) {
+          <p>Sin jugadas aún.</p>
+        } @else {
+          @for (item of turnLog(); track item.id; let i = $index) {
+            @if (item.kind === 'turn') {
+              <div class="turn-card">
+                <div class="turn-title">{{ logIndex(i) }}. {{ sideLabel(item.side) }}:</div>
+                <div class="turn-line">tablillas: {{ sticksLabel(item.sticks) }} {{ item.roll }}</div>
+                <div class="turn-line">movimiento: {{ item.movement ?? 'sin movimiento' }}</div>
+                @if (item.repeatNote) {
+                  <div class="turn-repeat">{{ item.repeatNote }}</div>
+                }
+              </div>
+            } @else {
+              <div class="turn-note">Nota: {{ item.message }}</div>
+            }
           }
         }
-      }
+      </div>
     </section>
 
     <section class="notes">
@@ -92,9 +121,29 @@
 
     <section class="help">
       <h2>Ayuda</h2>
+      <p><button type="button" (click)="openHowToHelp()">Ver guía completa</button></p>
       <p><a href="https://es.wikipedia.org/wiki/Senet" target="_blank" rel="noopener">Reglas base de Senet</a></p>
       <p><a href="https://es.wikipedia.org/wiki/%C3%81rbol_Expectiminimax" target="_blank" rel="noopener">Expectiminimax (bot)</a></p>
-      <p><a href="https://www.britannica.com/topic/Senet-board-game" target="_blank" rel="noopener">Contexto historico</a></p>
+      <p><a href="https://www.britannica.com/topic/Senet-board-game" target="_blank" rel="noopener">Contexto histórico</a></p>
+    </section>
+  }
+
+  @if (helpModalOpen()) {
+    <button class="help-modal-backdrop" type="button" aria-label="Cerrar ayuda" (click)="closeHelpModal()"></button>
+    <section class="help-modal">
+      <header class="help-modal-head">
+        <h2>Guía completa</h2>
+        <button type="button" (click)="closeHelpModal()">Cerrar</button>
+      </header>
+      <div class="help-modal-body">
+        @if (helpLoading()) {
+          <p>Cargando guía...</p>
+        } @else if (helpError()) {
+          <p>{{ helpError() }}</p>
+        } @else {
+          <article class="help-markdown" [innerHTML]="helpHtml()"></article>
+        }
+      </div>
     </section>
   }
 </main>

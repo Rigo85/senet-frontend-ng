@@ -1,10 +1,15 @@
-import { Component, DestroyRef, computed, signal } from '@angular/core';
+import { Component, DestroyRef, ElementRef, HostListener, ViewChild, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SenetSocketService } from './services/senet-socket.service';
 import { MoveRecord, SenetState } from './utils/types';
 
 const LS_KEY = 'senet:gameId';
+function resolveBackendUrl(): string {
+  const protocol = window.location.protocol;
+  const hostname = window.location.hostname || 'localhost';
+  return `${protocol}//${hostname}:3000`;
+}
 
 type TurnLogEntry = {
   kind: 'turn';
@@ -23,6 +28,146 @@ type NoteLogEntry = {
 };
 
 type LogEntry = TurnLogEntry | NoteLogEntry;
+type ThrowFx = {
+  id: number;
+  side: 'HUMAN' | 'BOT';
+  sticks: [number, number, number, number];
+  value: number;
+};
+type MoveFx = {
+  id: number;
+  side: 'HUMAN' | 'BOT';
+  icon: string;
+  label: string;
+  left: number;
+  top: number;
+  opacity: number;
+};
+type CaptureFx = {
+  id: number;
+  left: number;
+  top: number;
+};
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function renderInlineMarkdown(line: string): string {
+  let out = escapeHtml(line);
+  out = out.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  out = out.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  out = out.replace(/`(.+?)`/g, '<code>$1</code>');
+  out = out.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  return out;
+}
+
+function isTableRow(line: string): boolean {
+  const trimmed = line.trim();
+  return trimmed.startsWith('|') && trimmed.includes('|');
+}
+
+function isTableSeparator(line: string): boolean {
+  const trimmed = line.trim();
+  return /^\|\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?$/.test(trimmed);
+}
+
+function parseTableRow(line: string): string[] {
+  const trimmed = line.trim().replace(/^\|/, '').replace(/\|$/, '');
+  return trimmed.split('|').map((cell) => renderInlineMarkdown(cell.trim()));
+}
+
+function markdownToHtml(md: string): string {
+  const lines = md.replaceAll('\r\n', '\n').split('\n');
+  const html: string[] = [];
+  let inList = false;
+
+  const closeList = () => {
+    if (inList) {
+      html.push('</ul>');
+      inList = false;
+    }
+  };
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const raw = lines[i];
+    const line = raw.trimEnd();
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      closeList();
+      continue;
+    }
+
+    if (trimmed === '---') {
+      closeList();
+      html.push('<hr/>');
+      continue;
+    }
+
+    const heading = /^(#{1,6})\s+(.+)$/.exec(trimmed);
+    if (heading) {
+      closeList();
+      const level = heading[1].length;
+      html.push(`<h${level}>${renderInlineMarkdown(heading[2])}</h${level}>`);
+      continue;
+    }
+
+    if (/^>\s+/.test(trimmed)) {
+      closeList();
+      html.push(`<blockquote>${renderInlineMarkdown(trimmed.replace(/^>\s+/, ''))}</blockquote>`);
+      continue;
+    }
+
+    if (/^- /.test(trimmed)) {
+      if (!inList) {
+        html.push('<ul>');
+        inList = true;
+      }
+      html.push(`<li>${renderInlineMarkdown(trimmed.slice(2))}</li>`);
+      continue;
+    }
+
+    if (
+      i + 1 < lines.length &&
+      isTableRow(trimmed) &&
+      isTableSeparator(lines[i + 1]?.trim() ?? '')
+    ) {
+      closeList();
+      const headers = parseTableRow(trimmed);
+      html.push('<table><thead><tr>');
+      for (const h of headers) {
+        html.push(`<th>${h}</th>`);
+      }
+      html.push('</tr></thead><tbody>');
+
+      i += 2;
+      while (i < lines.length && isTableRow(lines[i])) {
+        const cells = parseTableRow(lines[i]);
+        html.push('<tr>');
+        for (const c of cells) {
+          html.push(`<td>${c}</td>`);
+        }
+        html.push('</tr>');
+        i += 1;
+      }
+      html.push('</tbody></table>');
+      i -= 1;
+      continue;
+    }
+
+    closeList();
+    html.push(`<p>${renderInlineMarkdown(trimmed)}</p>`);
+  }
+
+  closeList();
+  return html.join('\n');
+}
 
 @Component({
   selector: 'app-root',
@@ -31,13 +176,32 @@ type LogEntry = TurnLogEntry | NoteLogEntry;
   styleUrl: './app.scss'
 })
 export class App {
+  @ViewChild('turnLogList') private turnLogList?: ElementRef<HTMLElement>;
+
   private logSeq = 0;
   private lastMoveTurnSeen = 0;
+  private throwFxSeq = 0;
+  private throwFxTimer: ReturnType<typeof setTimeout> | null = null;
+  private moveFxSeq = 0;
+  private moveFxQueue: MoveRecord[] = [];
+  private moveFxRunning = false;
+  private captureFxSeq = 0;
+  private captureFxTimer: ReturnType<typeof setTimeout> | null = null;
+  private turnLogScrollPending = false;
 
   state = signal<SenetState | null>(null);
   loading = signal<boolean>(false);
   message = signal<string>('');
   turnLog = signal<LogEntry[]>([]);
+  throwFx = signal<ThrowFx | null>(null);
+  moveFx = signal<MoveFx | null>(null);
+  captureFx = signal<CaptureFx | null>(null);
+  menuOpen = signal<boolean>(false);
+  helpModalOpen = signal<boolean>(false);
+  helpLoading = signal<boolean>(false);
+  helpError = signal<string>('');
+  helpMarkdown = signal<string>('');
+  helpHtml = signal<string>('');
   selectedDifficulty = signal<2 | 4 | 6>(4);
 
   boardRows = [
@@ -82,6 +246,7 @@ export class App {
 
     this.ws.onThrowResult().pipe(takeUntilDestroyed(this.destroyRef)).subscribe((payload) => {
       this.pushTurnEntry(payload.side, payload.throw.sticks, payload.throw.value);
+      this.showThrowFx(payload.side, payload.throw.sticks, payload.throw.value);
     });
 
     this.ws.onGameOver().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(({ winner }) => {
@@ -92,6 +257,11 @@ export class App {
 
     this.ws.onTurnNote().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(({ message }) => {
       this.pushNoteEntry(message);
+    });
+
+    this.destroyRef.onDestroy(() => {
+      if (this.throwFxTimer) clearTimeout(this.throwFxTimer);
+      if (this.captureFxTimer) clearTimeout(this.captureFxTimer);
     });
 
     void this.bootstrapGame();
@@ -126,6 +296,7 @@ export class App {
   }
 
   async onNewGame(): Promise<void> {
+    this.closeMenu();
     await this.runAction(async () => {
       this.turnLog.set([]);
       this.lastMoveTurnSeen = 0;
@@ -151,6 +322,7 @@ export class App {
   }
 
   async onDifficultyChange(value: string): Promise<void> {
+    this.closeMenu();
     const parsed = Number(value) as 2 | 4 | 6;
     this.selectedDifficulty.set(parsed);
     const st = this.state();
@@ -221,6 +393,183 @@ export class App {
     return index + 1;
   }
 
+  toggleMenu(): void {
+    this.menuOpen.update((v) => !v);
+  }
+
+  closeMenu(): void {
+    this.menuOpen.set(false);
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    this.closeMenu();
+    this.closeHelpModal();
+  }
+
+  async openHowToHelp(): Promise<void> {
+    this.helpModalOpen.set(true);
+    if (this.helpMarkdown()) return;
+
+    this.helpLoading.set(true);
+    this.helpError.set('');
+    try {
+      const response = await fetch(`${resolveBackendUrl()}/help/how-to-play`);
+      if (!response.ok) throw new Error(`http_${response.status}`);
+      const markdown = await response.text();
+      this.helpMarkdown.set(markdown);
+      this.helpHtml.set(markdownToHtml(markdown));
+    } catch {
+      this.helpError.set('No se pudo cargar la guía desde el backend.');
+    } finally {
+      this.helpLoading.set(false);
+    }
+  }
+
+  closeHelpModal(): void {
+    this.helpModalOpen.set(false);
+  }
+
+  private showThrowFx(side: 'HUMAN' | 'BOT', sticks: [number, number, number, number], value: number): void {
+    if (this.throwFxTimer) clearTimeout(this.throwFxTimer);
+    this.throwFx.set({
+      id: ++this.throwFxSeq,
+      side,
+      sticks,
+      value
+    });
+    this.throwFxTimer = setTimeout(() => {
+      this.throwFx.set(null);
+      this.throwFxTimer = null;
+    }, 2400);
+  }
+
+  private enqueueMoveFx(move: MoveRecord): void {
+    this.moveFxQueue.push(move);
+    this.runMoveFxQueue();
+  }
+
+  private runMoveFxQueue(): void {
+    if (this.moveFxRunning) return;
+    const next = this.moveFxQueue.shift();
+    if (!next) return;
+    this.moveFxRunning = true;
+
+    const start = this.getCellCenter(next.from);
+    if (!start) {
+      this.moveFxRunning = false;
+      this.runMoveFxQueue();
+      return;
+    }
+
+    const end = next.to === 0 ? this.getExitPoint(start) : this.getCellCenter(next.to);
+    if (!end) {
+      this.moveFxRunning = false;
+      this.runMoveFxQueue();
+      return;
+    }
+
+    const fx: MoveFx = {
+      id: ++this.moveFxSeq,
+      side: next.side,
+      icon: next.side === 'HUMAN' ? '/images/ra.png' : '/images/apophis.png',
+      label: next.side === 'HUMAN' ? 'Ra' : 'Apophis',
+      left: start.x,
+      top: start.y,
+      opacity: 1
+    };
+    this.moveFx.set(fx);
+
+    void this.animateMoveFx(fx.id, start, end, next.to === 0).then(() => {
+      this.moveFx.set(null);
+      if (next.captures && next.to > 0) this.showCaptureFx(end);
+      this.moveFxRunning = false;
+      this.runMoveFxQueue();
+    });
+  }
+
+  private animateMoveFx(
+    fxId: number,
+    start: { x: number; y: number },
+    end: { x: number; y: number },
+    fadesOut: boolean
+  ): Promise<void> {
+    const durationMs = 430;
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const distance = Math.hypot(dx, dy);
+    const arc = Math.max(10, Math.min(44, distance * 0.25));
+    const control = {
+      x: (start.x + end.x) / 2,
+      y: (start.y + end.y) / 2 - arc
+    };
+
+    return new Promise<void>((resolve) => {
+      const startedAt = performance.now();
+      const step = (now: number) => {
+        const elapsed = now - startedAt;
+        const t = Math.min(1, elapsed / durationMs);
+        const inv = 1 - t;
+        const eased = 1 - Math.pow(1 - t, 3);
+        const x = inv * inv * start.x + 2 * inv * t * control.x + t * t * end.x;
+        const y = inv * inv * start.y + 2 * inv * t * control.y + t * t * end.y;
+        const opacity = fadesOut ? 1 - eased * 0.88 : 1;
+
+        this.moveFx.update((current) => {
+          if (!current || current.id !== fxId) return current;
+          return { ...current, left: x, top: y, opacity };
+        });
+
+        if (t < 1) {
+          requestAnimationFrame(step);
+          return;
+        }
+        resolve();
+      };
+      requestAnimationFrame(step);
+    });
+  }
+
+  private showCaptureFx(point: { x: number; y: number }): void {
+    if (this.captureFxTimer) clearTimeout(this.captureFxTimer);
+    this.captureFx.set({
+      id: ++this.captureFxSeq,
+      left: point.x,
+      top: point.y
+    });
+    this.captureFxTimer = setTimeout(() => {
+      this.captureFx.set(null);
+      this.captureFxTimer = null;
+    }, 320);
+  }
+
+  private getBoardWrapElement(): HTMLElement | null {
+    return document.querySelector('.board-wrap');
+  }
+
+  private getCellCenter(position: number): { x: number; y: number } | null {
+    const wrap = this.getBoardWrapElement();
+    if (!wrap) return null;
+    const cell = wrap.querySelector(`[data-pos="${position}"]`) as HTMLElement | null;
+    if (!cell) return null;
+    const wrapRect = wrap.getBoundingClientRect();
+    const cellRect = cell.getBoundingClientRect();
+    return {
+      x: cellRect.left - wrapRect.left + cellRect.width / 2,
+      y: cellRect.top - wrapRect.top + cellRect.height / 2
+    };
+  }
+
+  private getExitPoint(from: { x: number; y: number }): { x: number; y: number } | null {
+    const wrap = this.getBoardWrapElement();
+    if (!wrap) return null;
+    const wrapRect = wrap.getBoundingClientRect();
+    return {
+      x: from.x,
+      y: Math.max(10, from.y - Math.min(86, wrapRect.height * 0.28))
+    };
+  }
+
   private moveLabel(record: MoveRecord): string {
     const to = record.to === 0 ? 'OUT' : String(record.to);
     let suffix = '';
@@ -266,6 +615,7 @@ export class App {
       repeatNote
     };
     this.turnLog.update((current) => [...current, entry].slice(-120));
+    this.requestTurnLogScrollToEnd();
   }
 
   private pushNoteEntry(message: string): void {
@@ -275,6 +625,7 @@ export class App {
       message
     };
     this.turnLog.update((current) => [...current, entry].slice(-120));
+    this.requestTurnLogScrollToEnd();
   }
 
   private pushNewMovesToLog(state: SenetState): void {
@@ -315,7 +666,9 @@ export class App {
       }
 
       this.lastMoveTurnSeen = Math.max(this.lastMoveTurnSeen, mv.turn);
+      this.enqueueMoveFx(mv);
     }
+    this.requestTurnLogScrollToEnd();
   }
 
   private seedLogFromMoveHistory(moveHistory: MoveRecord[]): void {
@@ -330,6 +683,18 @@ export class App {
     }));
     this.turnLog.set(seeded.slice(-120));
     this.lastMoveTurnSeen = moveHistory.length;
+    this.requestTurnLogScrollToEnd();
+  }
+
+  private requestTurnLogScrollToEnd(): void {
+    if (this.turnLogScrollPending) return;
+    this.turnLogScrollPending = true;
+    queueMicrotask(() => {
+      this.turnLogScrollPending = false;
+      const el = this.turnLogList?.nativeElement;
+      if (!el) return;
+      el.scrollTop = el.scrollHeight;
+    });
   }
 
   private readGameId(): string | null {

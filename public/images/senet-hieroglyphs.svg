@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 230" width="420" height="230" style="background:#f5e6c8; font-family: serif;">
+
+  <rect width="420" height="230" fill="#f5e6c8" rx="10"/>
+  <rect x="5" y="5" width="410" height="220" fill="none" stroke="#8b6914" stroke-width="2" rx="8"/>
+  <rect x="10" y="10" width="400" height="210" fill="none" stroke="#8b6914" stroke-width="0.5" rx="6"/>
+
+  <!-- Título más grande -->
+  <text x="210" y="42" text-anchor="middle" font-size="20" fill="#5a3a0a" font-style="italic" letter-spacing="2">senet — juego del antiguo Egipto</text>
+
+  <!-- Jeroglíficos grandes -->
+  <text x="210" y="120" text-anchor="middle" font-size="72" fill="#2c1a00">𓊃𓈖𓏏𓏠</text>
+
+  <!-- Transliteración -->
+  <text x="210" y="148" text-anchor="middle" font-size="14" fill="#5a3a0a" font-style="italic">znt</text>
+
+  <!-- Leyenda de cada signo -->
+  <text x="65"  y="175" text-anchor="middle" font-size="22" fill="#3a2000">𓊃</text>
+  <text x="65"  y="191" text-anchor="middle" font-size="9"  fill="#5a3a0a">s / z</text>
+  <text x="65"  y="203" text-anchor="middle" font-size="8"  fill="#7a5a2a">(fonograma)</text>
+
+  <text x="145" y="175" text-anchor="middle" font-size="22" fill="#3a2000">𓈖</text>
+  <text x="145" y="191" text-anchor="middle" font-size="9"  fill="#5a3a0a">n</text>
+  <text x="145" y="203" text-anchor="middle" font-size="8"  fill="#7a5a2a">(fonograma)</text>
+
+  <text x="235" y="175" text-anchor="middle" font-size="22" fill="#3a2000">𓏏</text>
+  <text x="235" y="191" text-anchor="middle" font-size="9"  fill="#5a3a0a">t</text>
+  <text x="235" y="203" text-anchor="middle" font-size="8"  fill="#7a5a2a">(panecillo · X1)</text>
+
+  <text x="330" y="175" text-anchor="middle" font-size="22" fill="#3a2000">𓏠</text>
+  <text x="330" y="191" text-anchor="middle" font-size="9"  fill="#5a3a0a">—</text>
+  <text x="330" y="203" text-anchor="middle" font-size="8"  fill="#7a5a2a">(determinativo)</text>
+
+  <!-- Separadores -->
+  <line x1="105" y1="160" x2="105" y2="212" stroke="#8b6914" stroke-width="0.5" stroke-dasharray="3,3"/>
+  <line x1="190" y1="160" x2="190" y2="212" stroke="#8b6914" stroke-width="0.5" stroke-dasharray="3,3"/>
+  <line x1="282" y1="160" x2="282" y2="212" stroke="#8b6914" stroke-width="0.5" stroke-dasharray="3,3"/>
+
+</svg>
