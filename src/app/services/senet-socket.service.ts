@@ -5,9 +5,10 @@ import { SenetState, StickThrow } from '../utils/types';
 const CLIENT_SESSION_LS_KEY = 'senet:clientSessionId';
 
 function resolveBackendUrl(): string {
-  const protocol = window.location.protocol;
-  const hostname = window.location.hostname || 'localhost';
-  return `${protocol}//${hostname}:3008`;
+  // const protocol = window.location.protocol;
+  // const hostname = window.location.hostname || 'localhost';
+  // return `${protocol}//${hostname}:3008`;
+  return  "https://senet-game.rji-services.org";
 }
 
 function generateSessionId(): string {
