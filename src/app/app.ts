@@ -352,8 +352,8 @@ export class App {
   pieceIcon(position: number): string | null {
     const st = this.state();
     if (!st) return null;
-    if (st.humanPieces.includes(position)) return '/images/ra.png';
-    if (st.botPieces.includes(position)) return '/images/apophis.png';
+    if (st.humanPieces.includes(position)) return '/images/ra.webp';
+    if (st.botPieces.includes(position)) return '/images/apophis.webp';
     return null;
   }
 
@@ -376,7 +376,7 @@ export class App {
 
   specialCellImage(position: number): string | null {
     if (position === 15 || (position >= 26 && position <= 30)) {
-      return `/images/casilla-${position}.png`;
+      return `/images/casilla-${position}.webp`;
     }
     return null;
   }
@@ -473,7 +473,7 @@ export class App {
     const fx: MoveFx = {
       id: ++this.moveFxSeq,
       side: next.side,
-      icon: next.side === 'HUMAN' ? '/images/ra.png' : '/images/apophis.png',
+      icon: next.side === 'HUMAN' ? '/images/ra.webp' : '/images/apophis.webp',
       label: next.side === 'HUMAN' ? 'Ra' : 'Apophis',
       left: start.x,
       top: start.y,
